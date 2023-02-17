@@ -1,5 +1,6 @@
 #include "graph_template.cpp"
 #include <iostream>
+#include <string>
 
 int main()
 {
@@ -37,8 +38,17 @@ int main()
 	towns.insert_edge("Nada", "Govo", 0.1);
 	towns.insert_undirected_edge("Lutu", "Govo", 0.1);
 	towns.print_graph();
-	//towns.erase_vertex("Piri");
-	towns.reset_key("Nada", "New Piri");
+	
+	towns.reset_data("Piri", 9'000);
+	//towns.erase_edge(8);
+	towns.erase_edge(3, "Piri");
+	towns.erase_edges("Kafa", "Sele");
+	towns.erase_outedges("Bono");
+	towns.erase_inedges("Tumu");
 	towns.print_graph();
+	std::cout << towns.vertex_data("Piri") << std::endl;
+	std::cout << towns.indegree("Piri") << ' ' << towns.outdegree("Piri")
+		<< ' ' << towns.degree("Piri") << ' ' << towns.degree() << std::endl;
+	std::cout << towns.indegree("Tumu") << ' ' << towns.outdegree("Bono") << std::endl;
 	return 0;
 }
