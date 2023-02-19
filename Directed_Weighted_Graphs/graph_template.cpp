@@ -4,7 +4,6 @@
 #include <iostream>
 #include <list>
 #include <map>
-#include <memory>
 #include <vector>
 
 /** Implements a directed, weighted graph that enables storing additional data for vertices.
@@ -36,12 +35,7 @@ class my_graph
 	std::map<key_t, vertex_t> incidences;
 	size_t graph_order, graph_size, edges_count;
 
-	inline static key_t undefined_key = key_t();
-
 public:
-	static key_t undefined();
-	static void set_undefined(key_t new_undefined);
-
 	my_graph();
 
 	void print_graph();
@@ -60,14 +54,17 @@ public:
 
 	void insert_edge(key_t tail, key_t head, weight_t weight = 0.0);
 	void insert_undirected_edge(key_t tail, key_t head, weight_t weight = 0.0);
-	void erase_edge(size_t number, key_t tail); // = undefined
+	std::vector<size_t> edges(key_t tail, key_t head);
+	void erase_edge(size_t number);
+	void erase_edge(size_t number, key_t tail);
 	void erase_edges(key_t tail, key_t head);
 	void erase_inedges(key_t head);
 	void erase_outedges(key_t tail);
-
-	void reset_weight(size_t number, weight_t new_weight, key_t tail); // = undefined
+	void reset_weight(size_t number, weight_t new_weight);
+	void reset_weight(size_t number, weight_t new_weight, key_t tail);
 	void reset_weights(key_t tail, key_t head, weight_t new_weight);
-	weight_t& edge_weight(size_t number, key_t tail); // = undefined
+	weight_t& edge_weight(size_t number);
+	weight_t& edge_weight(size_t number, key_t tail);
 
 	bool empty();
 };
@@ -97,33 +94,11 @@ public:
 	}
 };
 
-
-/** The special value of undefined key, common for all the graphs.
-* @return undefined key
-*/
-template<class key_t, class data_t, class weight_t>
-key_t my_graph<key_t, data_t, weight_t>::undefined()
-{
-	return undefined_key;
-}
-
-/** Resets the value of undefined key to 'new_undefined', provided such key is not present in all the graphs.
-* @param key_t new_undefined - the new value of the undefined key
-* @throw error_t(problem_t::invalid_value) - if 'new_undefined' is already present in any of the graphs
-*/
-template<class key_t, class data_t, class weight_t>
-void my_graph<key_t, data_t, weight_t>::set_undefined(key_t new_undefined)
-{
-	//if (incidences.find(new_undefined) != incidences.end())
-		//throw error_t(problem_t::invalid_value);
-	undefined_key = new_undefined;
-}
-
 /// Constructor of class 'my_graph'.
 template<class key_t, class data_t, class weight_t>
 my_graph<key_t, data_t, weight_t>::my_graph() : graph_order(0), graph_size(0), edges_count(0)
 {
-	//undefined_key = key_t();
+	
 }
 
 /// Prints the graph to the console.
@@ -153,13 +128,10 @@ void my_graph<key_t, data_t, weight_t>::print_graph()
 * and assigns it with 'data', that is equal to data_t() by default.
 * @param key_t key - the key that should be inserted
 * @param data_t data - the data that should be assigned to the vertex
-* @throw error_t(problem_t::invalid_value) - if 'key' is the undefined key
 */
 template<class key_t, class data_t, class weight_t>
 void my_graph<key_t, data_t, weight_t>::insert_vertex(key_t key, data_t data)
 {
-	if (key == undefined_key)
-		throw error_t(problem_t::invalid_value);
 	incidences.insert(std::pair<key_t, vertex_t>(key, vertex_t(data)));
 	++graph_order;
 }
@@ -196,18 +168,17 @@ void my_graph<key_t, data_t, weight_t>::erase_vertex(key_t key)
 * @param key_t key - the key to be replaced
 * @param key_t new_key - the key to replace with
 * @throw error_t(problem_t::out_of_range) - if 'key' is not present in the graph
-* @throw error_t(problem_t::invalid_value) - if 'new_key' is the undefined key
-* 	or 'new_key' is already present in the graph
+* @throw error_t(problem_t::invalid_value) - if 'new_key' is already present in the graph
 */
 template<class key_t, class data_t, class weight_t>
 void my_graph<key_t, data_t, weight_t>::reset_key(key_t key, key_t new_key)
 {
-	if (new_key == undefined_key or incidences.find(new_key) != incidences.end())
-		throw error_t(problem_t::invalid_value);
 	if (key == new_key)
 		return;
 	if (incidences.find(key) == incidences.end())
 		throw error_t(problem_t::out_of_range);
+	if (incidences.find(new_key) != incidences.end())
+		throw error_t(problem_t::invalid_value);
 	incidences[new_key] = std::move(incidences[key]);
 	incidences.erase(key);
 	for (auto i = incidences.begin(); i != incidences.end(); ++i)
@@ -364,43 +335,66 @@ void my_graph<key_t, data_t, weight_t>::insert_undirected_edge(key_t tail, key_t
 	graph_size += 2;
 }
 
-/** Erases the edge with ordinal 'number'. If 'tail' is not provided, the edge is sought
-* in all the graph; otherwise, only the edges going out from 'tail' are considered.
+/** Returns the ordinal numbers of edges from 'tail' to 'head'.
+* @param key_t tail - the initial vertex of the edges
+* @param key_t head - the terminal vertex of the edges
+* @return the vector of ordinal numbers of the edges
+* @throw error_t(problem_t::out_of_range) - if 'tail' or 'head' is not present in the graph
+*/
+template<class key_t, class data_t, class weight_t>
+std::vector<size_t> my_graph<key_t, data_t, weight_t>::edges(key_t tail, key_t head)
+{
+	if (incidences.find(tail) == incidences.end() or incidences.find(head) == incidences.end())
+		throw error_t(problem_t::out_of_range);
+	std::vector<size_t> numbers;
+	for (auto o = incidences[tail].outedges.begin(); o != incidences[tail].outedges.end(); ++o)
+	{
+		if (o->head == head)
+			numbers.push_back(o->ordinal);
+	}
+	return numbers;
+}
+
+/** Erases the edge with ordinal 'number'. The edge is sought in all the graph.
 * @param size_t number - the identifier of the edge that should be erased
-* @param key_t tail - the initial vertex of 
+*/
+template<class key_t, class data_t, class weight_t>
+void my_graph<key_t, data_t, weight_t>::erase_edge(size_t number)
+{
+	if (number > edges_count)
+		return;
+	for (auto i = incidences.begin(); i != incidences.end(); ++i)
+	{
+		for (auto o = i->second.outedges.begin(); o != i->second.outedges.end(); ++o)
+		{
+			if (o->ordinal == number)
+			{
+				i->second.outedges.erase(o);
+				--graph_size;
+				return;
+			}
+		}
+	}
+}
+
+/** Erases the edge with ordinal 'number'. Only the edges going out from 'tail' are considered.
+* @param size_t number - the identifier of the edge that should be erased
+* @param key_t tail - the initial vertex of the edge
 */
 template<class key_t, class data_t, class weight_t>
 void my_graph<key_t, data_t, weight_t>::erase_edge(size_t number, key_t tail)
 {
 	if (number > edges_count)
 		return;
-	if (tail == undefined())
+	if (incidences.find(tail) == incidences.end())
+		return;
+	for (auto it = incidences[tail].outedges.begin(); it != incidences[tail].outedges.end(); ++it)
 	{
-		for (auto i = incidences.begin(); i != incidences.end(); ++i)
+		if (it->ordinal == number)
 		{
-			for (auto o = i->second.outedges.begin(); o != i->second.outedges.end(); ++o)
-			{
-				if (o->ordinal == number)
-				{
-					i->second.outedges.erase(o);
-					--graph_size;
-					return;
-				}
-			}
-		}
-	}
-	else
-	{
-		if (incidences.find(tail) == incidences.end())
+			incidences[tail].outedges.erase(it);
+			--graph_size;
 			return;
-		for (auto it = incidences[tail].outedges.begin(); it != incidences[tail].outedges.end(); ++it)
-		{
-			if (it->ordinal == number)
-			{
-				incidences[tail].outedges.erase(it);
-				--graph_size;
-				return;
-			}
 		}
 	}
 }
@@ -458,35 +452,36 @@ void my_graph<key_t, data_t, weight_t>::erase_outedges(key_t tail)
 }
 
 template<class key_t, class data_t, class weight_t>
-void my_graph<key_t, data_t, weight_t>::reset_weight(size_t number, weight_t new_weight, key_t tail)
+void my_graph<key_t, data_t, weight_t>::reset_weight(size_t number, weight_t new_weight)
 {
 	if (number > edges_count)
 		throw error_t(problem_t::out_of_range);
-	if (tail == undefined())
+	for (auto i = incidences.begin(); i != incidences.end(); ++i)
 	{
-		for (auto i = incidences.begin(); i != incidences.end(); ++i)
-		{
-			for (auto o = i->second.outedges.begin(); o != i->second.outedges.end(); ++o)
-			{
-				if (o->ordinal == number)
-				{
-					o->weight = new_weight;
-					return;
-				}
-			}
-		}
-	}
-	else
-	{
-		if (incidences.find(tail) == incidences.end())
-			return;
-		for (auto o = incidences[tail].outedges.begin(); o != incidences[tail].outedges.end(); ++o)
+		for (auto o = i->second.outedges.begin(); o != i->second.outedges.end(); ++o)
 		{
 			if (o->ordinal == number)
 			{
 				o->weight = new_weight;
 				return;
 			}
+		}
+	}
+}
+
+template<class key_t, class data_t, class weight_t>
+void my_graph<key_t, data_t, weight_t>::reset_weight(size_t number, weight_t new_weight, key_t tail)
+{
+	if (number > edges_count)
+		throw error_t(problem_t::out_of_range);
+	if (incidences.find(tail) == incidences.end())
+		return;
+	for (auto o = incidences[tail].outedges.begin(); o != incidences[tail].outedges.end(); ++o)
+	{
+		if (o->ordinal == number)
+		{
+			o->weight = new_weight;
+			return;
 		}
 	}
 }
@@ -512,30 +507,29 @@ void my_graph<key_t, data_t, weight_t>::reset_weights(key_t tail, key_t head, we
 }
 
 template<class key_t, class data_t, class weight_t>
-weight_t& my_graph<key_t, data_t, weight_t>::edge_weight(size_t number, key_t tail)
+weight_t& my_graph<key_t, data_t, weight_t>::edge_weight(size_t number)
 {
 	if (number > edges_count)
 		throw error_t(problem_t::out_of_range);
-	if (tail == undefined_key)
+	for (auto i = incidences.begin(); i != incidences.end(); ++i)
 	{
-		for (auto i = incidences.begin(); i != incidences.end(); ++i)
-		{
-			for (auto o = i.second.outedges.begin(); o != i.second.outedges.end(); ++o)
-			{
-				if (o->ordinal == number)
-					return o->weight;
-			}
-		}
-	}
-	else
-	{
-		if (incidences.find(tail) == incidences.end())
-			return;
-		for (auto o = incidences[tail].outedges.begin(); o != incidences[tail].outedges.end(); ++o)
+		for (auto o = i->second.outedges.begin(); o != i->second.outedges.end(); ++o)
 		{
 			if (o->ordinal == number)
 				return o->weight;
 		}
+	}
+}
+
+template<class key_t, class data_t, class weight_t>
+weight_t& my_graph<key_t, data_t, weight_t>::edge_weight(size_t number, key_t tail)
+{
+	if (number > edges_count or incidences.find(tail) == incidences.end())
+		throw error_t(problem_t::out_of_range);
+	for (auto o = incidences[tail].outedges.begin(); o != incidences[tail].outedges.end(); ++o)
+	{
+		if (o->ordinal == number)
+			return o->weight;
 	}
 }
 
