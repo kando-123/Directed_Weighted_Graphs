@@ -38,6 +38,8 @@ class my_graph
 	std::map<key_t, vertex_t> incidences;
 	size_t graph_order, graph_size, edges_count;
 
+	static key_t undefined_key;
+
 public:
 	my_graph();
 
@@ -78,6 +80,9 @@ public:
 
 	bool empty();
 };
+
+template <class key_t, class data_t, class weight_t = double>
+key_t my_graph<key_t, data_t, weight_t>::undefined = key_t();
 
 /// Enumeration class for errors, used as argument to class 'error_t' constructor.
 enum class problem_t { out_of_range = 1, empty_graph, invalid_value };
@@ -633,7 +638,7 @@ void my_graph<key_t, data_t, weight_t>::depth_first_search(std::function<void(ke
 {
 	if (incidences.empty())
 		return;
-	if (incidences.find(source) == incidence_list.end())
+	if (incidences.find(source) == incidences.end())
 		throw error_t(problem_t::out_of_range);
 	std::map<key_t, bool> visited;
 	for (auto i = incidences.begin(); i != incidences.end(); ++i)
@@ -641,9 +646,9 @@ void my_graph<key_t, data_t, weight_t>::depth_first_search(std::function<void(ke
 	visited[source] = true;
 	size_t count = incidences.size() - 1;
 	std::stack<std::pair<key_t, typename std::list<edge_t>::iterator>> last_place;
-	key_t vertex = initial;
+	key_t vertex = source;
 	typename std::list<edge_t>::iterator it = incidences[source].outedges.begin();
-	function(initial, incidences[source].data);
+	function(source, incidences[source].data);
 	while (count > 0)
 	{
 		while (it != incidences[vertex].outedges.end())
