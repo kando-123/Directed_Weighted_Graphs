@@ -1,9 +1,11 @@
 #pragma once
 #include <algorithm>
 #include <exception>
+#include <functional>
 #include <iostream>
 #include <list>
 #include <map>
+#include <queue>
 #include <vector>
 
 /** Implements a directed, weighted graph that enables storing additional data for vertices.
@@ -66,7 +68,7 @@ public:
 	weight_t& edge_weight(size_t number);
 	weight_t& edge_weight(size_t number, key_t tail);
 
-	// bfs
+	void breadth_first_search(std::function<void(key_t, data_t)> function, key_t initial);
 	// dfs
 	// Dijkstra
 	// Bellman_Ford
@@ -575,6 +577,53 @@ weight_t& my_graph<key_t, data_t, weight_t>::edge_weight(size_t number, key_t ta
 	{
 		if (o->ordinal == number)
 			return o->weight;
+	}
+}
+
+/** Performs breadth first search algorithm on the graph, beginning with
+* and executes 'function' for each vertex (its key as first argument and vertex_data as the second one).
+*/
+template<class key_t, class data_t, class weight_t>
+void my_graph<key_t, data_t, weight_t>::breadth_first_search(std::function<void(key_t, data_t)> function, key_t initial)
+{
+	if (incidences.empty())
+		return;
+	if (incidences.find(initial) == incidences.end())
+		throw error_t(problem_t::out_of_range);
+	std::map<key_t, bool> visited;
+	for (auto i = incidences.begin(); i != incidences.end(); ++i)
+		visited[i->first] = false;
+	visited[initial] = true;
+	size_t count = incidences.size() - 1;
+	std::queue<key_t> vertices;
+	vertices.push(initial);
+	key_t vertex = initial;
+	function(initial, incidences[initial].);
+	while (count > 0)
+	{
+		if (vertices.empty())
+		{
+			vertex = (*std::find_if_not(visited.begin(), visited.end(),
+				[](std::pair<key_t, bool> p) { return p.second; })).first;
+			function(vertex, incidences[vertex].data);
+			visited[vertex] = true;
+			--count;
+		}
+		else
+		{
+			vertex = vertices.front();
+			vertices.pop();
+		}
+		for (auto o = incidences[vertex].outedges.begin(); o != incidences[initial].outedges.end(); ++o)
+		{
+			if (not visited.at(o->head))
+			{
+				function(o->head, incidences.at(o->head).data);
+				visited.at(o->head) = true;
+				--count;
+				vertices.push(o->head);
+			}
+		}
 	}
 }
 
