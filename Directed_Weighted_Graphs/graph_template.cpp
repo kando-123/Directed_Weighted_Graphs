@@ -39,14 +39,12 @@ public:
 	my_graph();
 
 	void print_graph();
-	
+
 	void insert_vertex(key_t key, data_t data = data_t());
 	void erase_vertex(key_t key);
-
 	void reset_key(key_t key, key_t new_key);
 	void reset_data(key_t key, data_t new_data);
 	data_t& vertex_data(key_t key);
-
 	size_t indegree(key_t key);
 	size_t outdegree(key_t key);
 	size_t degree(key_t key);
@@ -55,6 +53,8 @@ public:
 	void insert_edge(key_t tail, key_t head, weight_t weight = 0.0);
 	void insert_undirected_edge(key_t tail, key_t head, weight_t weight = 0.0);
 	std::vector<size_t> edges(key_t tail, key_t head);
+	std::vector<size_t> outedges(key_t tail);
+	std::vector<size_t> inedges(key_t head);
 	void erase_edge(size_t number);
 	void erase_edge(size_t number, key_t tail);
 	void erase_edges(key_t tail, key_t head);
@@ -65,6 +65,13 @@ public:
 	void reset_weights(key_t tail, key_t head, weight_t new_weight);
 	weight_t& edge_weight(size_t number);
 	weight_t& edge_weight(size_t number, key_t tail);
+
+	// bfs
+	// dfs
+	// Dijkstra
+	// Bellman_Ford
+	// Floyd_Warshall
+	// 
 
 	bool empty();
 };
@@ -355,6 +362,44 @@ std::vector<size_t> my_graph<key_t, data_t, weight_t>::edges(key_t tail, key_t h
 	return numbers;
 }
 
+/** Returns the ordinal numbers of edges outgoing from 'tail'.
+* @param key_t tail - the initial vertex of the edges
+* @return the vector of ordinal numbers of the edges
+* @throw error_t(problem_t::out_of_range) - if 'tail' is not present in the graph
+*/
+template<class key_t, class data_t, class weight_t>
+std::vector<size_t> my_graph<key_t, data_t, weight_t>::outedges(key_t tail)
+{
+	if (incidences.find(tail) == incidences.end())
+		throw error_t(problem_t::out_of_range);
+	std::vector<size_t> numbers;
+	for (auto o = incidences[tail].outedges.begin(); o != incidences[tail].end(); ++o)
+		numbers.push_back(o->number);
+	return numbers;
+}
+
+/** Returns the ordinal numbers of edges leading to 'head'.
+* @param key_t head - the terminal vertex of the edges
+* @return the vector of ordinal numbers of the edges
+* @throw error_t(problem_t::out_of_range) - if 'head' is not present in the graph
+*/
+template<class key_t, class data_t, class weight_t>
+std::vector<size_t> my_graph<key_t, data_t, weight_t>::inedges(key_t head)
+{
+	if (incidences.find(head) == incidences.end())
+		throw error_t(problem_t::out_of_range);
+	std::vector<size_t> numbers;
+	for (auto i = incidences.begin(); i != incidences.end(); ++i)
+	{
+		for (auto o = i->second.outedges.begin(); o != i->second.outedges.end(); ++o)
+		{
+			if (o->ordinal == head)
+				numbers.push_back(o->ordinal);
+		}
+	}
+	return numbers;
+}
+
 /** Erases the edge with ordinal 'number'. The edge is sought in all the graph.
 * @param size_t number - the identifier of the edge that should be erased
 */
@@ -377,7 +422,7 @@ void my_graph<key_t, data_t, weight_t>::erase_edge(size_t number)
 	}
 }
 
-/** Erases the edge with ordinal 'number'. Only the edges going out from 'tail' are considered.
+/** Erases the edge with ordinal 'number'. The edge is sought only among the edges going out from 'tail'.
 * @param size_t number - the identifier of the edge that should be erased
 * @param key_t tail - the initial vertex of the edge
 */
