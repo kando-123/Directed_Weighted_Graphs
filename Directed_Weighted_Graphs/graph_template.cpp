@@ -6,6 +6,7 @@
 #include <list>
 #include <map>
 #include <queue>
+#include <stack>
 #include <vector>
 
 /** Implements a directed, weighted graph that enables storing additional data for vertices.
@@ -68,8 +69,8 @@ public:
 	weight_t& edge_weight(size_t number);
 	weight_t& edge_weight(size_t number, key_t tail);
 
-	void breadth_first_search(std::function<void(key_t, data_t)> function, key_t initial);
-	// dfs
+	void breadth_first_search(std::function<void(key_t, data_t)> function, key_t source);
+	void depth_first_search(std::function<void(key_t, data_t)> function, key_t source);
 	// Dijkstra
 	// Bellman_Ford
 	// Floyd_Warshall
@@ -580,25 +581,25 @@ weight_t& my_graph<key_t, data_t, weight_t>::edge_weight(size_t number, key_t ta
 	}
 }
 
-/** Performs breadth first search algorithm on the graph, beginning with
-* and executes 'function' for each vertex (its key as first argument and vertex_data as the second one).
+/** Performs breadth first search algorithm on the graph, beginning with vertex 'source'.
+* and executes 'function' for each vertex (the key as the first argument and the data as the second).
 */
 template<class key_t, class data_t, class weight_t>
-void my_graph<key_t, data_t, weight_t>::breadth_first_search(std::function<void(key_t, data_t)> function, key_t initial)
+void my_graph<key_t, data_t, weight_t>::breadth_first_search(std::function<void(key_t, data_t)> function, key_t source)
 {
 	if (incidences.empty())
 		return;
-	if (incidences.find(initial) == incidences.end())
+	if (incidences.find(source) == incidences.end())
 		throw error_t(problem_t::out_of_range);
 	std::map<key_t, bool> visited;
 	for (auto i = incidences.begin(); i != incidences.end(); ++i)
 		visited[i->first] = false;
-	visited[initial] = true;
+	visited[source] = true;
 	size_t count = incidences.size() - 1;
 	std::queue<key_t> vertices;
-	vertices.push(initial);
-	key_t vertex = initial;
-	function(initial, incidences[initial].);
+	vertices.push(source);
+	key_t vertex = source;
+	function(source, incidences[source].data);
 	while (count > 0)
 	{
 		if (vertices.empty())
@@ -614,7 +615,7 @@ void my_graph<key_t, data_t, weight_t>::breadth_first_search(std::function<void(
 			vertex = vertices.front();
 			vertices.pop();
 		}
-		for (auto o = incidences[vertex].outedges.begin(); o != incidences[initial].outedges.end(); ++o)
+		for (auto o = incidences[vertex].outedges.begin(); o != incidences[source].outedges.end(); ++o)
 		{
 			if (not visited.at(o->head))
 			{
@@ -627,6 +628,60 @@ void my_graph<key_t, data_t, weight_t>::breadth_first_search(std::function<void(
 	}
 }
 
+template<class key_t, class data_t, class weight_t>
+void my_graph<key_t, data_t, weight_t>::depth_first_search(std::function<void(key_t, data_t)> function, key_t source)
+{
+	if (incidences.empty())
+		return;
+	if (incidences.find(source) == incidence_list.end())
+		throw error_t(problem_t::out_of_range);
+	std::map<key_t, bool> visited;
+	for (auto i = incidences.begin(); i != incidences.end(); ++i)
+		visited[i->first] = false;
+	visited[source] = true;
+	size_t count = incidences.size() - 1;
+	std::stack<std::pair<key_t, typename std::list<edge_t>::iterator>> last_place;
+	key_t vertex = initial;
+	typename std::list<edge_t>::iterator it = incidences[source].outedges.begin();
+	function(initial, incidences[source].data);
+	while (count > 0)
+	{
+		while (it != incidences[vertex].outedges.end())
+		{
+			if (not visited[it->head])
+				break;
+			++it;
+		}
+		if (it == incidences[vertex].outedges.end())
+		{
+			if (last_place.empty())
+			{
+				vertex = (*std::find_if_not(visited.begin(), visited.end(),
+					[](std::pair<key_t, bool> p) { return p.second; })).first;
+				it = incidences[vertex].outedges.begin();
+				function(vertex, incidences[vertex].data);
+				visited[vertex] = true;
+				--count;
+			}
+			else
+			{
+				vertex = last_place.top().first;
+				it = last_place.top().second;
+				last_place.pop();
+			}
+		}
+		else
+		{
+			last_place.push(std::pair<key_t, typename std::list<edge_t>::iterator>(vertex, it));
+			vertex = it->head;
+			it = incidences.at(vertex).outedges.begin();
+			function(vertex, incidences.at(vertex).data);
+			visited.at(vertex) = true;
+			--count;
+		}
+	}
+}
+
 /** Checks whether the graph is empty.
 * @returns 'true' if the graph is empty, 'false' otherwise
 */
@@ -635,3 +690,85 @@ bool my_graph<key_t, data_t, weight_t>::empty()
 {
 	return incidences.empty();
 }
+
+/*
+template<class key_t, class v_data_t, class weight_t>
+void my_graph<key_t, v_data_t, weight_t>::Bellman_Ford(key_t source, std::map<key_t, weight_t>& distance, std::map<key_t, key_t>& previous)
+{
+	distance.clear();
+	previous.clear();
+	if (incidence_list.find(source) == incidence_list.end())
+		return;
+	std::map<key_t, bool> visited;
+	for (const auto& p : incidence_list)
+	{
+		distance.insert(std::pair<key_t, weight_t>(p.first, inf));
+		previous.insert(std::pair<key_t, key_t>(p.first, undef));
+		visited.insert(std::pair<key_t, bool>(p.first, false));
+	}
+	distance[source] = 0;
+	bool finish = false;
+	for (size_t i = 1; i < incidence_list.size(); ++i)
+	{
+		finish = true;
+		for (const auto& v : incidence_list)
+		{
+			for (const auto& e : v.second.edges)
+			{
+				if (distance[v.first] + e.edge_weight < distance[e.edge_head])
+				{
+					finish = false;
+					distance[e.edge_head] = distance[v.first] + e.edge_weight;
+					previous[e.edge_head] = v.first;
+				}
+			}
+		}
+		if (finish)
+			break;
+	}
+	for (const auto& v : incidence_list)
+	{
+		for (const auto& e : v.second.edges)
+		{
+			if (distance[v.first] + e.edge_weight < distance[e.edge_head])
+				throw my_exception(error_t::negative_cycle);
+		}
+	}
+}
+
+template<class key_t, class v_data_t, class weight_t>
+void my_graph<key_t, v_data_t, weight_t>::Floyd_Warshall(std::vector<std::vector<weight_t>>& distance, std::vector<std::vector<key_t>>& successor)
+{
+	distance.clear();
+	successor.clear();
+	for (size_t i = 0; i < incidence_list.size(); ++i)
+	{
+		distance.push_back(std::vector<weight_t>(incidence_list.size()));
+		successor.push_back(std::vector<key_t>(incidence_list.size()));
+	}
+	for (size_t i = 0; i < incidence_list.size(); ++i)
+		for (size_t j = 0; j < incidence_list.size(); ++j)
+			if (i == j)
+			{
+				distance[i][j] = 0;
+				successor[i][j] = j;
+			}
+			else
+			{
+				distance[i][j] = inf;
+				successor[i][j] = undefined;
+			}
+	for (size_t k = 0; k < incidence_list.size(); ++k)
+		for (size_t i = 0; i < incidence_list.size(); ++i)
+			if (distance[i][k] != inf)
+				for (size_t j = 0; j < incidence_list.size(); ++j)
+					if (distance[i][k] + distance[k][j] < distance[i][j])
+					{
+						distance[i][j] = distance[i][k] + distance[k][j];
+						successor[i][j] = successor[i][k];
+					}
+	for (size_t i = 0; i < incidence_list.size(); ++i)
+		if (distance[i][i] < 0)
+			throw my_exception(error_t::negative_cycle);
+}
+*/
