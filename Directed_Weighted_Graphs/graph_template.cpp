@@ -44,8 +44,8 @@ public:
 	~my_graph() = default;
 	void print_graph();
 
-	static key_t undefined();
-	static void set_undefined();
+	static key_t undefined() { return undefined_key; }
+	static void set_undefined(key_t new_undefined);
 
 	void insert_vertex(key_t key, data_t data = data_t());
 	void erase_vertex(key_t key);
@@ -75,7 +75,7 @@ public:
 
 	void breadth_first_search(std::function<void(key_t, data_t)> function, key_t source);
 	void depth_first_search(std::function<void(key_t, data_t)> function, key_t source);
-	// Dijkstra
+	void Dijkstra(key_t source, std::map<key_t, weight_t>& distance, std::map<key_t, key_t>& previous);
 	// Bellman_Ford
 	// Floyd_Warshall
 
@@ -138,6 +138,12 @@ void my_graph<key_t, data_t, weight_t>::print_graph()
 				std::cout << "[" << o->ordinal << "|" << o->head << ":" << o->weight << "] ";
 		std::cout << std::endl;
 	}
+}
+
+template<class key_t, class data_t, class weight_t>
+void my_graph<key_t, data_t, weight_t>::set_undefined(key_t new_undefined)
+{
+	undefined_key = new_undefined;
 }
 
 /** Inserts vertex 'key', provided such key is not yet present in the graph,
@@ -636,7 +642,7 @@ void my_graph<key_t, data_t, weight_t>::breadth_first_search(std::function<void(
 
 template<class key_t, class data_t, class weight_t>
 void my_graph<key_t, data_t, weight_t>::depth_first_search(std::function<void(key_t, data_t)> function, key_t source)
-{/*
+{
 	if (incidences.empty())
 		return;
 	if (incidences.find(source) == incidences.end())
@@ -648,23 +654,23 @@ void my_graph<key_t, data_t, weight_t>::depth_first_search(std::function<void(ke
 	size_t count = incidences.size() - 1;
 	std::stack<std::pair<key_t, typename std::list<edge_t>::iterator>> last_place;
 	key_t vertex = source;
-	typename std::list<edge_t>::iterator it = incidences[source].outedges.begin();
+	typename std::list<edge_t>::iterator o = incidences[source].outedges.begin();
 	function(source, incidences[source].data);
 	while (count > 0)
 	{
-		while (it != incidences[vertex].outedges.end())
+		while (o != incidences[vertex].outedges.end())
 		{
-			if (not visited[it->head])
+			if (not visited[o->head])
 				break;
-			++it;
+			++o;
 		}
-		if (it == incidences[vertex].outedges.end())
+		if (o == incidences[vertex].outedges.end())
 		{
 			if (last_place.empty())
 			{
-				vertex = (*std::find_if_not(visited.begin(), visited.end(),
-					[](std::pair<key_t, bool> p) { return p.second; })).first;
-				it = incidences[vertex].outedges.begin();
+				vertex = std::find_if_not(visited.begin(), visited.end(),
+					[](std::pair<key_t, bool> p) { return p.second; })->first;
+				o = incidences[vertex].outedges.begin();
 				function(vertex, incidences[vertex].data);
 				visited[vertex] = true;
 				--count;
@@ -672,20 +678,55 @@ void my_graph<key_t, data_t, weight_t>::depth_first_search(std::function<void(ke
 			else
 			{
 				vertex = last_place.top().first;
-				it = last_place.top().second;
+				o = last_place.top().second;
 				last_place.pop();
 			}
 		}
 		else
 		{
-			last_place.push(std::pair<key_t, typename std::list<edge_t>::iterator>(vertex, it));
-			vertex = it->head;
-			it = incidences.at(vertex).outedges.begin();
+			last_place.push(std::pair<key_t, typename std::list<edge_t>::iterator>(vertex, o));
+			vertex = o->head;
+			o = incidences.at(vertex).outedges.begin();
 			function(vertex, incidences.at(vertex).data);
 			visited.at(vertex) = true;
 			--count;
 		}
-	}*/
+	}
+}
+
+template<class key_t, class data_t, class weight_t>
+void my_graph<key_t, data_t, weight_t>::Dijkstra(key_t source, std::map<key_t, weight_t>& distance, std::map<key_t, key_t>& previous)
+{
+	distance.clear();
+	previous.clear();
+	if (incidences.find(source) == incidences.end())
+		throw error_t(problem_t::out_of_range);
+	std::map<key_t, bool> visited;
+	for (auto i = incidences.begin(); i != incidences.end(); ++i)
+	{
+		distance[i->first] = std::numeric_limits<weight_t>::infinity();
+		previous[i->first] = undefined_key;
+		visited[i->first] = false;
+	}
+	distance[source] = 0.0;
+	size_t vertex = undefined_key;
+	for (size_t count = graph_order; count > 0; --count)
+	{
+		for (auto d = distance.begin(); d != distance.end(); ++d)
+		{
+			if (visited[d->first])
+				continue;
+			if (vertex == undefined_key or d->second < distance[vertex])
+				vertex = d->first;
+		}
+		visited[vertex] = true;
+		for (auto o = incidences[vertex].outedges.begin(); o != incidences[vertex].outedges.end(); ++o)
+		{
+			
+		}
+		vertex = undefined_key;
+	}
+	
 }
 
 /** Checks whether the graph is empty.

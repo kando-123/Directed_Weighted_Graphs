@@ -177,5 +177,20 @@ int main()
 		},
 		"Piri");
 
+	header("DFS, print the number of inhabitants");
+	towns.depth_first_search(
+		[](std::string k, unsigned int d)
+		{
+			std::cout << k << " has " << d << " inhabitants." << std::endl;
+		},
+		"Piri");
+
+	header("\"undefined()\"");
+	std::cout << "\"" << my_graph<std::string, unsigned int>::undefined() << "\"" << std::endl;
+
+	header("set_undefined(\"none\")");
+	my_graph<std::string, unsigned int>::set_undefined("none");
+	std::cout << "\"" << my_graph<std::string, unsigned int>::undefined() << "\"" << std::endl;
+
 	return 0;
 }
