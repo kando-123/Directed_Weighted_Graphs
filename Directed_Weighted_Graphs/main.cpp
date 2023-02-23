@@ -146,6 +146,36 @@ int main()
 			std::cout << "[" << i << "] " << v[i] << "; ";
 		std::cout << std::endl;
 	}
-	
+
+	header("outedges(\"Fiki\")");
+	v = towns.outedges("Fiki");
+	if (v.empty())
+		std::cout << "No edges." << std::endl;
+	else
+	{
+		for (int i = 0; i < v.size(); ++i)
+			std::cout << "[" << i << "] " << v[i] << "; ";
+		std::cout << std::endl;
+	}
+
+	header("inedges(\"Fiki\")");
+	v = towns.inedges("Fiki");
+	if (v.empty())
+		std::cout << "No edges." << std::endl;
+	else
+	{
+		for (int i = 0; i < v.size(); ++i)
+			std::cout << "[" << i << "] " << v[i] << "; ";
+		std::cout << std::endl;
+	}
+
+	header("BFS, print the number of inhabitants");
+	towns.breadth_first_search(
+		[](std::string k, unsigned int d)
+		{
+			std::cout << k << " has " << d << " inhabitants." << std::endl;
+		},
+		"Piri");
+
 	return 0;
 }
