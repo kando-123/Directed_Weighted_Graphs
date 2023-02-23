@@ -35,6 +35,8 @@ class my_graph
 	std::map<key_t, vertex_t> incidences;
 	size_t graph_order, graph_size, edges_count;
 
+	static key_t undefined_key;
+
 public:
 	my_graph();
 
@@ -71,10 +73,12 @@ public:
 	// Dijkstra
 	// Bellman_Ford
 	// Floyd_Warshall
-	// 
 
 	bool empty();
 };
+
+template <class key_t, class data_t, class weight_t>
+key_t my_graph<key_t, data_t, weight_t>::undefined_key = key_t();
 
 /// Enumeration class for errors, used as argument to class 'error_t' constructor.
 enum class problem_t { out_of_range = 1, empty_graph, invalid_value };
