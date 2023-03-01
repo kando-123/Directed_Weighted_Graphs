@@ -7,6 +7,7 @@
 #include <map>
 #include <queue>
 #include <stack>
+#include <vector>
 
 /** Implements a directed, weighted graph that enables storing additional data for vertices.
 * Vertices are recognised by unique keys; key_t() should not be used as a key since it denotes
@@ -37,15 +38,17 @@ class my_graph
 	std::map<key_t, vertex_t> incidences;
 	size_t graph_order, graph_size, edges_count;
 
-	static key_t undefined_key;
 
 public:
 	my_graph();
 	~my_graph() = default;
 	void print_graph();
 
-	static key_t undefined() { return undefined_key; }
-	static void set_undefined(key_t new_undefined);
+	// A special value that refers to no vertex in all the graphs of the template.
+	// It is the user's responsibility to keep it absent in the graphs.
+	static key_t undefined;
+	// A special value of infinity.
+	static weight_t infinity;
 
 	void insert_vertex(key_t key, data_t data = data_t());
 	void erase_vertex(key_t key);
@@ -75,18 +78,43 @@ public:
 
 	void breadth_first_search(std::function<void(key_t, data_t)> function, key_t source);
 	void depth_first_search(std::function<void(key_t, data_t)> function, key_t source);
-	void Dijkstra(key_t source, std::map<key_t, weight_t>& distance, std::map<key_t, key_t>& previous);
-	// Bellman_Ford
-	// Floyd_Warshall
+	
+	class OneToAll_t
+	{
+		friend OneToAll_t my_graph<key_t, data_t, weight_t>::Dijkstra(key_t);
+		key_t initial;
+		std::map<key_t, weight_t> distance;
+		std::map<key_t, key_t> predecessor;
+	public:
+		OneToAll_t() : initial(undefined) {};
+		OneToAll_t(key_t _initial) : initial(_initial) {};
+		weight_t path_cost(key_t terminal);
+		std::vector<key_t> path_vertices(key_t terminal);
+		std::vector<size_t> path_edges(key_t terminal);
+		void clear();
+	};
+	OneToAll_t Dijkstra(key_t source);
+	OneToAll_t Bellman_Ford(key_t source);
+	
+	class AllToAll_t
+	{
+		std::map<key_t, std::map<key_t, double>> distance;
+		std::map<key_t, std::map<key_t, key_t>> successor;
+	};
+	AllToAll_t Floyd_Warshall();
 
 	bool empty();
 };
 
 template <class key_t, class data_t, class weight_t>
-key_t my_graph<key_t, data_t, weight_t>::undefined_key = key_t();
+key_t my_graph<key_t, data_t, weight_t>::undefined = key_t();
+
+template <class key_t, class data_t, class weight_t>
+weight_t my_graph<key_t, data_t, weight_t>::infinity = std::numeric_limits<weight_t>::infinity();
 
 /// Enumeration class for errors, used as argument to class 'error_t' constructor.
-enum class problem_t { out_of_range = 1, empty_graph, invalid_value };
+enum class problem_t { out_of_range = 1, empty_graph, invalid_value, negative_weight, no_path,
+	negative_cycle };
 
 /// Class used for throwing exceptions.
 class error_t : public std::exception
@@ -104,6 +132,12 @@ public:
 			return "Empty graph.";
 		case problem_t::invalid_value:
 			return "Invalid value.";
+		case problem_t::negative_weight:
+			return "Negative weight.";
+		case problem_t::no_path:
+			return "No path.";
+		case problem_t::negative_cycle:
+			return "Negative cycle.";
 		default:
 			return "Unknown problem.";
 		}
@@ -138,12 +172,6 @@ void my_graph<key_t, data_t, weight_t>::print_graph()
 				std::cout << "[" << o->ordinal << "|" << o->head << ":" << o->weight << "] ";
 		std::cout << std::endl;
 	}
-}
-
-template<class key_t, class data_t, class weight_t>
-void my_graph<key_t, data_t, weight_t>::set_undefined(key_t new_undefined)
-{
-	undefined_key = new_undefined;
 }
 
 /** Inserts vertex 'key', provided such key is not yet present in the graph,
@@ -695,38 +723,46 @@ void my_graph<key_t, data_t, weight_t>::depth_first_search(std::function<void(ke
 }
 
 template<class key_t, class data_t, class weight_t>
-void my_graph<key_t, data_t, weight_t>::Dijkstra(key_t source, std::map<key_t, weight_t>& distance, std::map<key_t, key_t>& previous)
+typename my_graph<key_t, data_t, weight_t>::OneToAll_t my_graph<key_t, data_t, weight_t>::Dijkstra(key_t source)
 {
-	distance.clear();
-	previous.clear();
 	if (incidences.find(source) == incidences.end())
 		throw error_t(problem_t::out_of_range);
+	OneToAll_t results(source);
 	std::map<key_t, bool> visited;
+	std::vector<key_t> heap;
+	key_t closest = undefined;
 	for (auto i = incidences.begin(); i != incidences.end(); ++i)
 	{
-		distance[i->first] = std::numeric_limits<weight_t>::infinity();
-		previous[i->first] = undefined_key;
+		heap.push_back(i->first);
+		if (heap.back() == source)
+			std::swap(heap.front(), heap.back());
+		results.distance[i->first] = infinity;
+		results.predecessor[i->first] = undefined;
 		visited[i->first] = false;
 	}
-	distance[source] = 0.0;
-	size_t vertex = undefined_key;
+	results.distance[source] = 0.0;
+	//std::make_heap(heap.begin(), heap.end(),
+	//	[&results](key_t left, key_t right)
+	//	{ return results.distance[left] > results.distance[right]; });
 	for (size_t count = graph_order; count > 0; --count)
 	{
-		for (auto d = distance.begin(); d != distance.end(); ++d)
+		closest = heap[0];
+		visited[closest] = true;
+		std::pop_heap(heap.begin(), heap.begin() + count,
+			[&results, &visited](key_t left, key_t right)
+			{ return visited[left] or (results.distance[left] > results.distance[right]); });
+		for (auto o = incidences[closest].outedges.begin(); o != incidences[closest].outedges.end(); ++o)
 		{
-			if (visited[d->first])
-				continue;
-			if (vertex == undefined_key or d->second < distance[vertex])
-				vertex = d->first;
+			if (o->weight < 0.0)
+				throw error_t(problem_t::negative_weight);
+			if (results.distance[closest] + o->weight < results.distance.at(o->head))
+			{
+				results.distance[o->head] = results.distance[closest] + o->weight;
+				results.predecessor[o->head] = closest;
+			}
 		}
-		visited[vertex] = true;
-		for (auto o = incidences[vertex].outedges.begin(); o != incidences[vertex].outedges.end(); ++o)
-		{
-			
-		}
-		vertex = undefined_key;
 	}
-	
+	return results;
 }
 
 /** Checks whether the graph is empty.
@@ -738,12 +774,10 @@ bool my_graph<key_t, data_t, weight_t>::empty()
 	return incidences.empty();
 }
 
-/*
-template<class key_t, class v_data_t, class weight_t>
-void my_graph<key_t, v_data_t, weight_t>::Bellman_Ford(key_t source, std::map<key_t, weight_t>& distance, std::map<key_t, key_t>& previous)
+template<class key_t, class data_t, class weight_t>
+typename my_graph<key_t, data_t, weight_t>::OneToAll_t my_graph<key_t, data_t, weight_t>::Bellman_Ford(key_t source)
 {
-	distance.clear();
-	previous.clear();
+	/*
 	if (incidence_list.find(source) == incidence_list.end())
 		return;
 	std::map<key_t, bool> visited;
@@ -781,8 +815,9 @@ void my_graph<key_t, v_data_t, weight_t>::Bellman_Ford(key_t source, std::map<ke
 				throw my_exception(error_t::negative_cycle);
 		}
 	}
+	*/
 }
-
+/*
 template<class key_t, class v_data_t, class weight_t>
 void my_graph<key_t, v_data_t, weight_t>::Floyd_Warshall(std::vector<std::vector<weight_t>>& distance, std::vector<std::vector<key_t>>& successor)
 {
@@ -819,3 +854,41 @@ void my_graph<key_t, v_data_t, weight_t>::Floyd_Warshall(std::vector<std::vector
 			throw my_exception(error_t::negative_cycle);
 }
 */
+
+template<class key_t, class data_t, class weight_t>
+weight_t my_graph<key_t, data_t, weight_t>::OneToAll_t::path_cost(key_t terminal)
+{
+	if (distance.find(terminal) == distance.end())
+		throw error_t(problem_t::out_of_range);
+	return distance[terminal];
+}
+
+template<class key_t, class data_t, class weight_t>
+std::vector<key_t> my_graph<key_t, data_t, weight_t>::OneToAll_t::path_vertices(key_t terminal)
+{
+	if (predecessor.find(terminal) == predecessor.end())
+		throw error_t(problem_t::out_of_range);
+	if (predecessor[terminal] == undefined)
+		throw error_t(problem_t::no_path);
+	std::vector<key_t> path;
+	for (key_t vertex = terminal; vertex != initial; vertex = predecessor[vertex])
+		path.push_back(vertex);
+	path.push_back(initial);
+	for (size_t i = 0; i < path.size() / 2; ++i)
+		std::swap(path[i], path[path.size() - i - 1]);
+	return path;
+}
+
+template<class key_t, class data_t, class weight_t>
+std::vector<size_t> my_graph<key_t, data_t, weight_t>::OneToAll_t::path_edges(key_t terminal)
+{
+	return std::vector<key_t>();
+}
+
+template<class key_t, class data_t, class weight_t>
+void my_graph<key_t, data_t, weight_t>::OneToAll_t::clear()
+{
+	initial = undefined;
+	distance.clear();
+	predecessor.clear();
+}

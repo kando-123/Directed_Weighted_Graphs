@@ -185,12 +185,15 @@ int main()
 		},
 		"Piri");
 
-	header("\"undefined()\"");
-	std::cout << "\"" << my_graph<std::string, unsigned int>::undefined() << "\"" << std::endl;
+	header("undefined");
+	std::cout << "\"" << my_graph<std::string, unsigned int>::undefined << "\"" << std::endl;
 
-	header("set_undefined(\"none\")");
-	my_graph<std::string, unsigned int>::set_undefined("none");
-	std::cout << "\"" << my_graph<std::string, unsigned int>::undefined() << "\"" << std::endl;
+	header("undefined = \"none\"");
+	my_graph<std::string, unsigned int>::undefined = "none";
+	std::cout << "\"" << my_graph<std::string, unsigned int>::undefined << "\"" << std::endl;
+
+	header("Dijkstra");
+	auto Dijkstra = towns.Dijkstra("Tumu");
 
 	return 0;
 }
