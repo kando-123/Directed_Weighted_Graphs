@@ -111,6 +111,14 @@ public:
 	AllToAll_t Floyd_Warshall();
 
 	bool empty();
+
+	enum class mode { serial, bfs, dfs };
+	class iterator
+	{
+		std::shared_ptr<my_graph<key_t, data_t, weight_t>> the_graph;
+		std::shared_ptr<std::pair<key_t, vertex_t>> the_vertex;
+		mode flag;
+	};
 };
 
 template <class key_t, class data_t, class weight_t>
@@ -762,9 +770,6 @@ typename my_graph<key_t, data_t, weight_t>::OneToAll_t my_graph<key_t, data_t, w
 		visited[i->first] = false;
 	}
 	results.distance[source] = 0.0;
-	//std::make_heap(heap.begin(), heap.end(),
-	//	[&results](key_t left, key_t right)
-	//	{ return results.distance[left] > results.distance[right]; });
 	for (size_t count = graph_order; count > 0; --count)
 	{
 		closest = heap[0];
@@ -810,7 +815,7 @@ typename my_graph<key_t, data_t, weight_t>::OneToAll_t my_graph<key_t, data_t, w
 	}
 	results.distance[source] = 0;
 	bool finish = false;
-	for (size_t i = 1; i < incidences.size(); ++i)
+	for (size_t count = 1; count < incidences.size(); ++count)
 	{
 		finish = true;
 		for (auto i = incidences.begin(); i != incidences.end(); ++i)
@@ -821,7 +826,7 @@ typename my_graph<key_t, data_t, weight_t>::OneToAll_t my_graph<key_t, data_t, w
 				{
 					finish = false;
 					results.distance[o->head] = results.distance[i->first] + o->weight;
-					results.predecessor[o->head] = o->head;
+					results.predecessor[o->head] = i->first;
 				}
 			}
 		}
@@ -845,11 +850,6 @@ typename my_graph<key_t, data_t, weight_t>::AllToAll_t my_graph<key_t, data_t, w
 	AllToAll_t results = AllToAll_t();
 	for (auto i = incidences.begin(); i != incidences.end(); ++i)
 	{
-		results.distance[i->first] = std::unordered_map<key_t, weight_t>();
-		results.successor[i->first] = std::unordered_map<key_t, key_t>();
-	}
-	for (auto i = incidences.begin(); i != incidences.end(); ++i)
-	{
 		for (auto j = incidences.begin(); j != incidences.end(); ++j)
 		{
 			if (i->first == j->first)
@@ -861,6 +861,14 @@ typename my_graph<key_t, data_t, weight_t>::AllToAll_t my_graph<key_t, data_t, w
 			{
 				results.distance[i->first][j->first] = infinity;
 				results.successor[i->first][j->first] = undefined;
+				for (auto o = incidences[i->first].outedges.begin(); o != incidences[i->first].end(); ++o)
+				{
+					if (o->head == j->first and o->weight < results.distance[i->first][j->first])
+					{
+						results.distance[i->first][j->first] = o->weight;
+						results.successor[i->first][j->first] = j->first;
+					}
+				}
 			}
 		}
 	}
@@ -868,11 +876,12 @@ typename my_graph<key_t, data_t, weight_t>::AllToAll_t my_graph<key_t, data_t, w
 	{
 		for (auto i = incidences.begin(); i != incidences.end(); ++i)
 		{
-			if (results.distance[i->first][k->first] != inf)
+			if (results.distance[i->first][k->first] != infinity)
 			{
 				for (auto j = incidences.begin(); j != incidences.end(); ++j)
 				{
-					if (distance[i->first][k->first] + distance[k->first][j->first] < distance[i->first][j->first])
+					if (results.distance[i->first][k->first] + results.distance[k->first][j->first]
+						< results.distance[i->first][j->first])
 					{
 						results.distance[i->first][j->first]
 							= results.distance[i->first][k->first] + results.distance[k->first][j->first];
@@ -924,4 +933,36 @@ void my_graph<key_t, data_t, weight_t>::OneToAll_t::clear()
 	initial = undefined;
 	distance.clear();
 	predecessor.clear();
+}
+
+template<class key_t, class data_t, class weight_t>
+weight_t my_graph<key_t, data_t, weight_t>::AllToAll_t::path_cost(key_t initial, key_t terminal)
+{
+	if (distance.find(initial) == distance.end())
+		throw error_t(problem_t::out_of_range);
+	if (distance[initial].find(terminal) == distance[initial].end())
+		throw error_t(problem_t::out_of_range);
+	return distance[initial][terminal];
+}
+
+template<class key_t, class data_t, class weight_t>
+std::vector<key_t> my_graph<key_t, data_t, weight_t>::AllToAll_t::path_vertices(key_t initial, key_t terminal)
+{
+	if (successor.find(initial) == successor.end())
+		throw error_t(problem_t::out_of_range);
+	if (successor[initial].find(terminal) == successor[initial].end())
+		throw error_t(problem_t::out_of_range);
+	std::vector<key_t> path;
+	if (successor[initial][terminal] == undefined)
+		return path;
+	for (key_t vertex = initial; vertex != terminal; vertex = successor[vertex][terminal])
+		path.push_back(vertex);
+	path.push_back(terminal);
+	return path;
+}
+
+template<class key_t, class data_t, class weight_t>
+std::vector<size_t> my_graph<key_t, data_t, weight_t>::AllToAll_t::path_edges(key_t initial, key_t terminal)
+{
+	return std::vector<size_t>();
 }

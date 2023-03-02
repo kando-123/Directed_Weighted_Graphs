@@ -194,42 +194,76 @@ int main()
 
 	header("Dijkstra");
 	auto Dijkstra = towns.Dijkstra("Fiki");
-	
-	std::cout << Dijkstra.path_cost("Dimi") << std::endl;
+	std::cout << "The shortest path from Fiki to Dimi has cost: " << Dijkstra.path_cost("Dimi") << std::endl;
 	auto path = Dijkstra.path_vertices("Dimi");
-	for (auto p = path.begin(); p != path.end(); ++p)
-		std::cout << *p << " ";
-	std::cout << std::endl;
-
-	std::cout << Dijkstra.path_cost("Rava") << std::endl;
-	path = Dijkstra.path_vertices("Rava");
+	std::cout << "The shortest path from Fiki to Dimi: ";
 	if (path.size() == 0)
 		std::cout << "No path.";
 	else
+	{
 		for (auto p = path.begin(); p != path.end(); ++p)
 			std::cout << *p << " ";
+	}
 	std::cout << std::endl;
-	/*
+	std::cout << "The shortest path from Fiki to Rava has cost: " << Dijkstra.path_cost("Rava") << std::endl;
+	path = Dijkstra.path_vertices("Rava");
+	std::cout << "The shortest path from Fiki to Rava: ";
+		if (path.size() == 0)
+			std::cout << "No path.";
+		else
+		{
+			for (auto p = path.begin(); p != path.end(); ++p)
+				std::cout << *p << " ";
+		}
+	std::cout << std::endl;
+
 	header("Bellman-Ford");
 	auto Bellman_Ford = towns.Bellman_Ford("Fiki");
-
-	std::cout << Bellman_Ford.path_cost("Dimi") << std::endl;
+	std::cout << "The shortest path from Fiki to Dimi has cost: " << Bellman_Ford.path_cost("Dimi") << std::endl;
 	path = Bellman_Ford.path_vertices("Dimi");
-	for (auto p = path.begin(); p != path.end(); ++p)
-		std::cout << *p << " ";
-	std::cout << std::endl;
-
-	std::cout << Bellman_Ford.path_cost("Rava") << std::endl;
-	path = Bellman_Ford.path_vertices("Rava");
+	std::cout << "The shortest path from Fiki to Dimi: ";
 	if (path.size() == 0)
 		std::cout << "No path.";
 	else
+	{
 		for (auto p = path.begin(); p != path.end(); ++p)
 			std::cout << *p << " ";
+	}
 	std::cout << std::endl;
-	*/
+	std::cout << "The shortest path from Fiki to Rava has cost: " << Bellman_Ford.path_cost("Rava") << std::endl;
+	path = Bellman_Ford.path_vertices("Rava");
+	std::cout << "The shortest path from Fiki to Rava: ";
+	if (path.size() == 0)
+		std::cout << "No path.";
+	else
+	{
+		for (auto p = path.begin(); p != path.end(); ++p)
+			std::cout << *p << " ";
+	}
+	std::cout << std::endl;
 
-
+	header("negative edge");
+	std::cout << "Dijktra" << std::endl;
+	towns.edge_weight(1) = -1.0;
+	try
+	{
+		Dijkstra = towns.Dijkstra("Waya");
+		std::cout << "Success!" << std::endl;
+	}
+	catch (error_t e)
+	{
+		std::cout << e.what() << std::endl;
+	}
+	std::cout << "Bellman-Ford" << std::endl;
+	try
+	{
+		Bellman_Ford = towns.Bellman_Ford("Waya");
+		std::cout << "Success!" << std::endl;
+	}
+	catch (error_t e)
+	{
+		std::cout << e.what() << std::endl;
+	}
 
 	return 0;
 }
