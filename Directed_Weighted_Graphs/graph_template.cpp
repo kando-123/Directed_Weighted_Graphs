@@ -4,7 +4,7 @@
 #include <functional>
 #include <iostream>
 #include <list>
-#include <map>
+#include <unordered_map>
 #include <queue>
 #include <stack>
 #include <vector>
@@ -35,7 +35,7 @@ class my_graph
 		vertex_t(data_t _data = data_t()) : data(_data), outedges() {}
 	};
 
-	std::map<key_t, vertex_t> incidences;
+	std::unordered_map<key_t, vertex_t> incidences;
 	size_t graph_order, graph_size, edges_count;
 
 
@@ -59,7 +59,6 @@ public:
 	size_t outdegree(key_t key);
 	size_t degree(key_t key);
 	size_t degree();
-
 	void insert_edge(key_t tail, key_t head, weight_t weight = 0.0);
 	void insert_undirected_edge(key_t tail, key_t head, weight_t weight = 0.0);
 	std::vector<size_t> edges(key_t tail, key_t head);
@@ -75,16 +74,18 @@ public:
 	void reset_weights(key_t tail, key_t head, weight_t new_weight);
 	weight_t& edge_weight(size_t number);
 	weight_t& edge_weight(size_t number, key_t tail);
+	void clear();
 
 	void breadth_first_search(std::function<void(key_t, data_t)> function, key_t source);
 	void depth_first_search(std::function<void(key_t, data_t)> function, key_t source);
-	
+
 	class OneToAll_t
 	{
 		friend OneToAll_t my_graph<key_t, data_t, weight_t>::Dijkstra(key_t);
+		friend OneToAll_t my_graph<key_t, data_t, weight_t>::Bellman_Ford(key_t);
 		key_t initial;
-		std::map<key_t, weight_t> distance;
-		std::map<key_t, key_t> predecessor;
+		std::unordered_map<key_t, weight_t> distance;
+		std::unordered_map<key_t, key_t> predecessor;
 	public:
 		OneToAll_t() : initial(undefined) {};
 		OneToAll_t(key_t _initial) : initial(_initial) {};
@@ -98,8 +99,14 @@ public:
 	
 	class AllToAll_t
 	{
-		std::map<key_t, std::map<key_t, double>> distance;
-		std::map<key_t, std::map<key_t, key_t>> successor;
+		friend OneToAll_t my_graph<key_t, data_t, weight_t>::Floyd_Warshall(key_t);
+		std::unordered_map<key_t, std::unordered_map<key_t, weight_t>> distance;
+		std::unordered_map<key_t, std::unordered_map<key_t, key_t>> successor;
+	public:
+		AllToAll_t() = default;
+		weight_t path_cost(key_t initial, key_t terminal);
+		std::vector<key_t> path_vertices(key_t initial, key_t terminal);
+		std::vector<size_t> path_edges(key_t initial, key_t terminal);
 	};
 	AllToAll_t Floyd_Warshall();
 
@@ -217,7 +224,7 @@ void my_graph<key_t, data_t, weight_t>::erase_vertex(key_t key)
 * The old vertex is erased and 'key' is replaced by 'new_key' in all the edges.
 * @param key_t key - the key to be replaced
 * @param key_t new_key - the key to replace with
-* @throw error_t(problem_t::out_of_range) - if 'key' is not present in the graph
+* @throw error_t(problem_t::out_of_range) - if 'key' is absent in the graph
 * @throw error_t(problem_t::invalid_value) - if 'new_key' is already present in the graph
 */
 template<class key_t, class data_t, class weight_t>
@@ -246,7 +253,7 @@ void my_graph<key_t, data_t, weight_t>::reset_key(key_t key, key_t new_key)
 /** Resets the data assigned to vertex 'key'.
 * @param key_t key - the key of the vertex whose data should be reset
 * @param data_t new_data - the new data that should be assigned to the vertex
-* @throw error_t(problem_t::out_of_range) - if no such vertex is present in the graph
+* @throw error_t(problem_t::out_of_range) - if vertex 'key' is absent in the graph
 */
 template<class key_t, class data_t, class weight_t>
 void my_graph<key_t, data_t, weight_t>::reset_data(key_t key, data_t new_data)
@@ -259,7 +266,7 @@ void my_graph<key_t, data_t, weight_t>::reset_data(key_t key, data_t new_data)
 /** Returns reference to the data assigned to vertex 'key'.
 * @param key_t key - the vertex whose data should be accessed
 * @return reference to the data
-* @throw error_t(problem_t::out_of_range) - if no such vertex is present in the graph
+* @throw error_t(problem_t::out_of_range) - if vertex 'key' is absent in the graph
 */
 template<class key_t, class data_t, class weight_t>
 data_t& my_graph<key_t, data_t, weight_t>::vertex_data(key_t key)
@@ -272,7 +279,7 @@ data_t& my_graph<key_t, data_t, weight_t>::vertex_data(key_t key)
 /** Counts the input degree of vertex 'key'.
 * @param key_t key - the vertex whose input degree should be counted
 * @return the number of edges leading to the vertex
-* @throw error_t(problem_t::out_of_range) - if no such vertex is present in the graph
+* @throw error_t(problem_t::out_of_range) - if vertex 'key' is absent in the graph
 */
 template<class key_t, class data_t, class weight_t>
 size_t my_graph<key_t, data_t, weight_t>::indegree(key_t key)
@@ -294,7 +301,7 @@ size_t my_graph<key_t, data_t, weight_t>::indegree(key_t key)
 /** Counts the output degree of vertex 'key'.
 * @param key_t key - the vertex whose output degree should be counted
 * @return the number of edges going out from the vertex
-* @throw error_t(problem_t::out_of_range) - if no such vertex is present in the graph
+* @throw error_t(problem_t::out_of_range) - if vertex 'key' is absent in the graph
 */
 template<class key_t, class data_t, class weight_t>
 size_t my_graph<key_t, data_t, weight_t>::outdegree(key_t key)
@@ -307,7 +314,7 @@ size_t my_graph<key_t, data_t, weight_t>::outdegree(key_t key)
 /** Counts the degree of vertex 'key'.
 * @param key_t key - the vertex whose degree should be counted
 * @return the number of edges incident on the vertex
-* @throw error_t(problem_t::out_of_range) - if no such vertex is present in the graph
+* @throw error_t(problem_t::out_of_range) - if vertex 'key' is absent in the graph
 */
 template<class key_t, class data_t, class weight_t>
 size_t my_graph<key_t, data_t, weight_t>::degree(key_t key)
@@ -335,7 +342,7 @@ size_t my_graph<key_t, data_t, weight_t>::degree()
 {
 	if (incidences.empty())
 		throw error_t(problem_t::empty_graph);
-	std::map<key_t, size_t> counts;
+	std::unordered_map<key_t, size_t> counts;
 	for (auto i = incidences.begin(); i != incidences.end(); ++i)
 		counts.insert(std::pair<key_t, size_t>(i->first, i->second.outedges.size()));
 	for (auto i = incidences.begin(); i != incidences.end(); ++i)
@@ -357,7 +364,7 @@ size_t my_graph<key_t, data_t, weight_t>::degree()
  * @param key_t tail - the initial vertex of the edge
  * @param key_t head - the terminal vertex of the edge
  * @param weight_t weight - the weight that should be assigned to the edge
- * @throw error_t(problem_t::out_of_range) - if vertices 'tail' and 'head' are not present in the graph
+ * @throw error_t(problem_t::out_of_range) - if vertices 'tail' and 'head' are absent in the graph
  */
 template<class key_t, class data_t, class weight_t>
 void my_graph<key_t, data_t, weight_t>::insert_edge(key_t tail, key_t head, weight_t weight)
@@ -373,7 +380,7 @@ void my_graph<key_t, data_t, weight_t>::insert_edge(key_t tail, key_t head, weig
 * @param key_t tail - an endpoint of the edges
 * @param key_t head - the other endpoint of the edges
 * @param weight_t weight - the weight that should be assigned to the edges
-* @throw error_t(problem_t::out_of_range) - if vertices 'tail' and 'head' are not present in the graph
+* @throw error_t(problem_t::out_of_range) - if vertices 'tail' and 'head' are absent in the graph
 */
 template<class key_t, class data_t, class weight_t>
 void my_graph<key_t, data_t, weight_t>::insert_undirected_edge(key_t tail, key_t head, weight_t weight)
@@ -389,7 +396,7 @@ void my_graph<key_t, data_t, weight_t>::insert_undirected_edge(key_t tail, key_t
 * @param key_t tail - the initial vertex of the edges
 * @param key_t head - the terminal vertex of the edges
 * @return the vector of ordinal numbers of the edges
-* @throw error_t(problem_t::out_of_range) - if 'tail' or 'head' is not present in the graph
+* @throw error_t(problem_t::out_of_range) - if 'tail' or 'head' is absent in the graph
 */
 template<class key_t, class data_t, class weight_t>
 std::vector<size_t> my_graph<key_t, data_t, weight_t>::edges(key_t tail, key_t head)
@@ -408,7 +415,7 @@ std::vector<size_t> my_graph<key_t, data_t, weight_t>::edges(key_t tail, key_t h
 /** Returns the ordinal numbers of edges outgoing from 'tail'.
 * @param key_t tail - the initial vertex of the edges
 * @return the vector of ordinal numbers of the edges
-* @throw error_t(problem_t::out_of_range) - if 'tail' is not present in the graph
+* @throw error_t(problem_t::out_of_range) - if 'tail' is absent in the graph
 */
 template<class key_t, class data_t, class weight_t>
 std::vector<size_t> my_graph<key_t, data_t, weight_t>::outedges(key_t tail)
@@ -424,7 +431,7 @@ std::vector<size_t> my_graph<key_t, data_t, weight_t>::outedges(key_t tail)
 /** Returns the ordinal numbers of edges leading to 'head'.
 * @param key_t head - the terminal vertex of the edges
 * @return the vector of ordinal numbers of the edges
-* @throw error_t(problem_t::out_of_range) - if 'head' is not present in the graph
+* @throw error_t(problem_t::out_of_range) - if 'head' is absent in the graph
 */
 template<class key_t, class data_t, class weight_t>
 std::vector<size_t> my_graph<key_t, data_t, weight_t>::inedges(key_t head)
@@ -621,6 +628,15 @@ weight_t& my_graph<key_t, data_t, weight_t>::edge_weight(size_t number, key_t ta
 	}
 }
 
+template<class key_t, class data_t, class weight_t>
+void my_graph<key_t, data_t, weight_t>::clear()
+{
+	incidences.clear();
+	graph_order = 0;
+	graph_size = 0;
+	edges_count = 0;
+}
+
 /** Performs breadth first search algorithm on the graph, beginning with vertex 'source'.
 * and executes 'function' for each vertex (the key as the first argument and the data as the second).
 */
@@ -631,7 +647,7 @@ void my_graph<key_t, data_t, weight_t>::breadth_first_search(std::function<void(
 		return;
 	if (incidences.find(source) == incidences.end())
 		throw error_t(problem_t::out_of_range);
-	std::map<key_t, bool> visited;
+	std::unordered_map<key_t, bool> visited;
 	for (auto i = incidences.begin(); i != incidences.end(); ++i)
 		visited[i->first] = false;
 	visited[source] = true;
@@ -675,7 +691,7 @@ void my_graph<key_t, data_t, weight_t>::depth_first_search(std::function<void(ke
 		return;
 	if (incidences.find(source) == incidences.end())
 		throw error_t(problem_t::out_of_range);
-	std::map<key_t, bool> visited;
+	std::unordered_map<key_t, bool> visited;
 	for (auto i = incidences.begin(); i != incidences.end(); ++i)
 		visited[i->first] = false;
 	visited[source] = true;
@@ -722,13 +738,18 @@ void my_graph<key_t, data_t, weight_t>::depth_first_search(std::function<void(ke
 	}
 }
 
+/** Solves the problem of finding the shortest paths from vertex 'source' to all the vertices in the graph
+* by means of the Dijkstra's algorithm.
+* @return an object containing the solution to the problem
+* @throw error_t(problem_t::out_of_range) - if 'source' is absent in the graph
+*/
 template<class key_t, class data_t, class weight_t>
 typename my_graph<key_t, data_t, weight_t>::OneToAll_t my_graph<key_t, data_t, weight_t>::Dijkstra(key_t source)
 {
 	if (incidences.find(source) == incidences.end())
 		throw error_t(problem_t::out_of_range);
 	OneToAll_t results(source);
-	std::map<key_t, bool> visited;
+	std::unordered_map<key_t, bool> visited;
 	std::vector<key_t> heap;
 	key_t closest = undefined;
 	for (auto i = incidences.begin(); i != incidences.end(); ++i)
@@ -777,83 +798,95 @@ bool my_graph<key_t, data_t, weight_t>::empty()
 template<class key_t, class data_t, class weight_t>
 typename my_graph<key_t, data_t, weight_t>::OneToAll_t my_graph<key_t, data_t, weight_t>::Bellman_Ford(key_t source)
 {
-	/*
-	if (incidence_list.find(source) == incidence_list.end())
-		return;
-	std::map<key_t, bool> visited;
-	for (const auto& p : incidence_list)
+	if (incidences.find(source) == incidences.end())
+		throw error_t(problem_t::out_of_range);
+	OneToAll_t results(source);
+	std::unordered_map<key_t, bool> visited;
+	for (auto i = incidences.begin(); i != incidences.end(); ++i)
 	{
-		distance.insert(std::pair<key_t, weight_t>(p.first, inf));
-		previous.insert(std::pair<key_t, key_t>(p.first, undef));
-		visited.insert(std::pair<key_t, bool>(p.first, false));
+		results.distance[i->first] = infinity;
+		results.predecessor[i->first] = undefined;
+		visited[i->first] = false;
 	}
-	distance[source] = 0;
+	results.distance[source] = 0;
 	bool finish = false;
-	for (size_t i = 1; i < incidence_list.size(); ++i)
+	for (size_t i = 1; i < incidences.size(); ++i)
 	{
 		finish = true;
-		for (const auto& v : incidence_list)
+		for (auto i = incidences.begin(); i != incidences.end(); ++i)
 		{
-			for (const auto& e : v.second.edges)
+			for (auto o = i->second.outedges.begin(); o != i->second.outedges.end(); ++o)
 			{
-				if (distance[v.first] + e.edge_weight < distance[e.edge_head])
+				if (results.distance[i->first] + o->weight < results.distance[o->head])
 				{
 					finish = false;
-					distance[e.edge_head] = distance[v.first] + e.edge_weight;
-					previous[e.edge_head] = v.first;
+					results.distance[o->head] = results.distance[i->first] + o->weight;
+					results.predecessor[o->head] = o->head;
 				}
 			}
 		}
 		if (finish)
 			break;
 	}
-	for (const auto& v : incidence_list)
+	for (auto i = incidences.begin(); i != incidences.end(); ++i)
 	{
-		for (const auto& e : v.second.edges)
+		for (auto o = incidences[i->first].outedges.begin(); o != incidences[i->first].outedges.end(); ++o)
 		{
-			if (distance[v.first] + e.edge_weight < distance[e.edge_head])
-				throw my_exception(error_t::negative_cycle);
+			if (results.distance[i->first] + o->weight < results.distance[o->head])
+				throw error_t(problem_t::negative_cycle);
 		}
 	}
-	*/
+	return results;
 }
-/*
-template<class key_t, class v_data_t, class weight_t>
-void my_graph<key_t, v_data_t, weight_t>::Floyd_Warshall(std::vector<std::vector<weight_t>>& distance, std::vector<std::vector<key_t>>& successor)
+
+template<class key_t, class data_t, class weight_t>
+typename my_graph<key_t, data_t, weight_t>::AllToAll_t my_graph<key_t, data_t, weight_t>::Floyd_Warshall()
 {
-	distance.clear();
-	successor.clear();
-	for (size_t i = 0; i < incidence_list.size(); ++i)
+	AllToAll_t results = AllToAll_t();
+	for (auto i = incidences.begin(); i != incidences.end(); ++i)
 	{
-		distance.push_back(std::vector<weight_t>(incidence_list.size()));
-		successor.push_back(std::vector<key_t>(incidence_list.size()));
+		results.distance[i->first] = std::unordered_map<key_t, weight_t>();
+		results.successor[i->first] = std::unordered_map<key_t, key_t>();
 	}
-	for (size_t i = 0; i < incidence_list.size(); ++i)
-		for (size_t j = 0; j < incidence_list.size(); ++j)
-			if (i == j)
+	for (auto i = incidences.begin(); i != incidences.end(); ++i)
+	{
+		for (auto j = incidences.begin(); j != incidences.end(); ++j)
+		{
+			if (i->first == j->first)
 			{
-				distance[i][j] = 0;
-				successor[i][j] = j;
+				results.distance[i->first][j->first] = 0;
+				results.successor[i->first][j->first] = j->first;
 			}
 			else
 			{
-				distance[i][j] = inf;
-				successor[i][j] = undefined;
+				results.distance[i->first][j->first] = infinity;
+				results.successor[i->first][j->first] = undefined;
 			}
-	for (size_t k = 0; k < incidence_list.size(); ++k)
-		for (size_t i = 0; i < incidence_list.size(); ++i)
-			if (distance[i][k] != inf)
-				for (size_t j = 0; j < incidence_list.size(); ++j)
-					if (distance[i][k] + distance[k][j] < distance[i][j])
+		}
+	}
+	for (auto k = incidences.begin(); k != incidences.end(); ++k)
+	{
+		for (auto i = incidences.begin(); i != incidences.end(); ++i)
+		{
+			if (results.distance[i->first][k->first] != inf)
+			{
+				for (auto j = incidences.begin(); j != incidences.end(); ++j)
+				{
+					if (distance[i->first][k->first] + distance[k->first][j->first] < distance[i->first][j->first])
 					{
-						distance[i][j] = distance[i][k] + distance[k][j];
-						successor[i][j] = successor[i][k];
+						results.distance[i->first][j->first]
+							= results.distance[i->first][k->first] + results.distance[k->first][j->first];
+						results.successor[i->first][j->first] = results.successor[i->first][k->first];
 					}
-	for (size_t i = 0; i < incidence_list.size(); ++i)
-		if (distance[i][i] < 0)
-			throw my_exception(error_t::negative_cycle);
+				}
+			}
+		}
+	}
+	for (auto i = incidences.begin(); i != incidences.end(); ++i)
+		if (results.distance[i->first][i->first] < 0)
+			throw error_t(problem_t::negative_cycle);
+	return results;
 }
-*/
 
 template<class key_t, class data_t, class weight_t>
 weight_t my_graph<key_t, data_t, weight_t>::OneToAll_t::path_cost(key_t terminal)
@@ -868,9 +901,9 @@ std::vector<key_t> my_graph<key_t, data_t, weight_t>::OneToAll_t::path_vertices(
 {
 	if (predecessor.find(terminal) == predecessor.end())
 		throw error_t(problem_t::out_of_range);
-	if (predecessor[terminal] == undefined)
-		throw error_t(problem_t::no_path);
 	std::vector<key_t> path;
+	if (predecessor[terminal] == undefined)
+		return path;
 	for (key_t vertex = terminal; vertex != initial; vertex = predecessor[vertex])
 		path.push_back(vertex);
 	path.push_back(initial);

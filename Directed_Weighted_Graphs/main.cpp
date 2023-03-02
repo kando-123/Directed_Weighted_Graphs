@@ -142,7 +142,7 @@ int main()
 		std::cout << "No edges." << std::endl;
 	else
 	{
-		for (int i = 0; i < v.size(); ++i)
+		for (size_t i = 0; i < v.size(); ++i)
 			std::cout << "[" << i << "] " << v[i] << "; ";
 		std::cout << std::endl;
 	}
@@ -153,7 +153,7 @@ int main()
 		std::cout << "No edges." << std::endl;
 	else
 	{
-		for (int i = 0; i < v.size(); ++i)
+		for (size_t i = 0; i < v.size(); ++i)
 			std::cout << "[" << i << "] " << v[i] << "; ";
 		std::cout << std::endl;
 	}
@@ -164,7 +164,7 @@ int main()
 		std::cout << "No edges." << std::endl;
 	else
 	{
-		for (int i = 0; i < v.size(); ++i)
+		for (size_t i = 0; i < v.size(); ++i)
 			std::cout << "[" << i << "] " << v[i] << "; ";
 		std::cout << std::endl;
 	}
@@ -193,7 +193,43 @@ int main()
 	std::cout << "\"" << my_graph<std::string, unsigned int>::undefined << "\"" << std::endl;
 
 	header("Dijkstra");
-	auto Dijkstra = towns.Dijkstra("Tumu");
+	auto Dijkstra = towns.Dijkstra("Fiki");
+	
+	std::cout << Dijkstra.path_cost("Dimi") << std::endl;
+	auto path = Dijkstra.path_vertices("Dimi");
+	for (auto p = path.begin(); p != path.end(); ++p)
+		std::cout << *p << " ";
+	std::cout << std::endl;
+
+	std::cout << Dijkstra.path_cost("Rava") << std::endl;
+	path = Dijkstra.path_vertices("Rava");
+	if (path.size() == 0)
+		std::cout << "No path.";
+	else
+		for (auto p = path.begin(); p != path.end(); ++p)
+			std::cout << *p << " ";
+	std::cout << std::endl;
+	/*
+	header("Bellman-Ford");
+	auto Bellman_Ford = towns.Bellman_Ford("Fiki");
+
+	std::cout << Bellman_Ford.path_cost("Dimi") << std::endl;
+	path = Bellman_Ford.path_vertices("Dimi");
+	for (auto p = path.begin(); p != path.end(); ++p)
+		std::cout << *p << " ";
+	std::cout << std::endl;
+
+	std::cout << Bellman_Ford.path_cost("Rava") << std::endl;
+	path = Bellman_Ford.path_vertices("Rava");
+	if (path.size() == 0)
+		std::cout << "No path.";
+	else
+		for (auto p = path.begin(); p != path.end(); ++p)
+			std::cout << *p << " ";
+	std::cout << std::endl;
+	*/
+
+
 
 	return 0;
 }
