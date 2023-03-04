@@ -40,7 +40,7 @@ class my_graph
 
 
 public:
-	my_graph();
+	my_graph() : graph_order(0), graph_size(0), edges_count(0) {}
 	~my_graph() = default;
 	void print_graph();
 
@@ -64,6 +64,7 @@ public:
 	std::vector<size_t> edges(key_t tail, key_t head);
 	std::vector<size_t> outedges(key_t tail);
 	std::vector<size_t> inedges(key_t head);
+	size_t shortest_edge(key_t tail, key_t head);
 	void erase_edge(size_t number);
 	void erase_edge(size_t number, key_t tail);
 	void erase_edges(key_t tail, key_t head);
@@ -158,13 +159,6 @@ public:
 		}
 	}
 };
-
-/// Constructor of class 'my_graph'.
-template<class key_t, class data_t, class weight_t>
-my_graph<key_t, data_t, weight_t>::my_graph() : graph_order(0), graph_size(0), edges_count(0)
-{
-	// done
-}
 
 /// Prints the graph to the console.
 template<class key_t, class data_t, class weight_t>
@@ -456,6 +450,24 @@ std::vector<size_t> my_graph<key_t, data_t, weight_t>::inedges(key_t head)
 		}
 	}
 	return numbers;
+}
+
+template<class key_t, class data_t, class weight_t>
+size_t my_graph<key_t, data_t, weight_t>::shortest_edge(key_t tail, key_t head)
+{
+	if (incidences.find(tail) == incidences.end() or incidences.find(head) == incidences.end())
+		return 0;
+	size_t number = 0;
+	weight_t weight = infinity;
+	for (auto o = incidences[tail].outedges.begin(); o != incidences[tail].end(); ++o)
+	{
+		if (o->head == head and o->weight < weight)
+		{
+			number = o->ordinal;
+			weight = o->weight;
+		}
+	}
+	return number;
 }
 
 /** Erases the edge with ordinal 'number'. The edge is sought in all the graph.
